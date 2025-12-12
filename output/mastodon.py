@@ -4,11 +4,22 @@ from settings.auth import *
 from local.functions import write_log
 import time
 
-if settings.Mastodon:
-    mastodon = Mastodon(
-        access_token = MASTODON_TOKEN,
-        api_base_url = MASTODON_INSTANCE
-    )
+mastodon_client = None
+
+def get_mastodon():
+    global mastodon_client
+    if mastodon_client:
+        return mastodon_client
+    
+    try:
+        mastodon_client = Mastodon(
+            access_token = MASTODON_TOKEN,
+            api_base_url = MASTODON_INSTANCE
+        )
+        return mastodon_client
+    except Exception as e:
+        write_log(f"Failed to initialize Mastodon client: {e}", "error")
+        return None
 
 # More or less the exact same function as for tweeting, but for tooting.
 def toot(post, reply_to_post, quoted_post, images, visibility = "unlisted"):
@@ -19,6 +30,10 @@ def toot(post, reply_to_post, quoted_post, images, visibility = "unlisted"):
     elif reply_to_post is not None and quoted_post:
         post_url = MASTODON_INSTANCE + "@" + MASTODON_USER + "/" + str(quoted_post)
         post += "\n" + post_url
+    mastodon = get_mastodon()
+    if not mastodon:
+        raise Exception("Mastodon client not initialized")
+
     media_ids = []
     # If post includes images, images are uploaded so that they can be included in the toot
     if images:
@@ -40,12 +55,15 @@ def toot(post, reply_to_post, quoted_post, images, visibility = "unlisted"):
             media_ids.append(res.id)
     # I wanted to make this part a little neater, but didn't get it to work and gave up. So here we are.
     # If post is both reply and has images it is posted as both a reply and with images (duh). 
-    # If just either of the two it is posted with just that, and if neither it is just posted as a text post.
+    # If just either of the two it is posted as with just that, and if neither it is just posted as a text post.
     a = mastodon.status_post(post, in_reply_to_id=reply_to_post, media_ids=media_ids, visibility=visibility)
     write_log("Posted to mastodon")
     id = a["id"]
     return id
 
 def retoot(toot_id):
+    mastodon = get_mastodon()
+    if not mastodon:
+        raise Exception("Mastodon client not initialized")
     mastodon.status_reblog(toot_id)
     write_log("Boosted toot " + str(toot_id))

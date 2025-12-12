@@ -91,8 +91,13 @@ def get_instagram_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, P
                 allowed_reply="All",
                 repost=False
             )
-            # For IG, we want to first post to bsky
+            # For IG, we want to first post to bsky ONLY.
             p.post_to["bsky"] = True
+            p.post_to["twitter"] = False
+            p.post_to["mastodon"] = False
+            p.post_to["discord"] = False
+            p.post_to["tumblr"] = False
+            p.post_to["telegram"] = False
             
             posts[media['id']] = p
 
