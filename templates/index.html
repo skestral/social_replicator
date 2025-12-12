@@ -81,7 +81,7 @@
 
         <section class="card">
             <h2 style="margin-bottom: 1.5rem;">Recent Logs</h2>
-            <div class="log-viewer" id="logViewer">
+            <div class="log-viewer" id="logViewer" style="height: 400px; color: #22c55e;">
                 Loading logs...
             </div>
         </section>
@@ -170,9 +170,11 @@
                 const container = document.getElementById('logViewer');
                 if (data.logs) {
                     // Highlight errors
-                    const html = data.logs.replace(/\n/g, '<br>')
-                        .replace(/^(.*\(ERROR\):.*)$/gm, '<span style="color: #ef4444; font-weight: bold;">$1</span>');
+                    // Highlight errors first, then newlines
+                    let html = data.logs.replace(/^(.*\(ERROR\):.*)$/gm, '<span style="color: #ef4444; font-weight: bold;">$1</span>');
+                    html = html.replace(/\n/g, '<br>');
                     container.innerHTML = html;
+                    container.style.color = '#22c55e'; // Restore green
                     container.scrollTop = container.scrollHeight;
                 }
             } catch (e) {

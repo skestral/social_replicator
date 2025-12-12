@@ -162,7 +162,10 @@ def run_job():
 
 @app.route('/api/logs')
 def get_logs():
-    date = arrow.utcnow().format("YYMMDD")
+    # Get configured timezone
+    tz = settings_manager.get("TIMEZONE", "US/Pacific")
+    
+    date = arrow.now(tz).format("YYMMDD")
     current_log = log_path + date + ".log"
     
     if os.path.exists(current_log):
@@ -188,6 +191,8 @@ def get_logs():
                         if len(parts) > 1:
                             ts_str = parts[0].strip()
                             # Parse with explicit timezone
+                            # Note: The log itself writes MM/DD/YYYY, let's trust it maps correctly to the TZ 
+                            # used to write it.
                             ts = arrow.get(ts_str, "MM/DD/YYYY HH:mm:ss", tzinfo=tz)
                             
                             if ts >= cutoff:

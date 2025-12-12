@@ -25,7 +25,7 @@
         <section class="card">
             <h2 style="margin-bottom: 1.5rem;">All Logs (Today)</h2>
             <div class="log-viewer" id="logViewer"
-                style="height: 70vh; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                style="height: 70vh; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #22c55e;">
                 Loading logs...
             </div>
         </section>
@@ -43,9 +43,11 @@
                     const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
 
                     // Highlight errors
-                    const html = data.logs.replace(/\n/g, '<br>')
-                        .replace(/^(.*\(ERROR\):.*)$/gm, '<span style="color: #ef4444; font-weight: bold;">$1</span>');
+                    // Highlight errors first, then newlines
+                    let html = data.logs.replace(/^(.*\(ERROR\):.*)$/gm, '<span style="color: #ef4444; font-weight: bold;">$1</span>');
+                    html = html.replace(/\n/g, '<br>');
                     container.innerHTML = html;
+                    container.style.color = '#22c55e';
 
                     // Auto-scroll only if already at bottom or first load
                     if (isScrolledToBottom || container.innerHTML === 'Loading logs...') {
