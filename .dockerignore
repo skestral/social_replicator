@@ -1,0 +1,14 @@
+__pycache__
+venv
+.env
+.git
+.DS_Store
+*.pyc
+logs/*
+!logs/.keep
+images/*
+!images/.keep
+session.txt
+db/*
+!db/.keep
+backup/*
