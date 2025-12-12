@@ -3,15 +3,12 @@ services:
     build: .
     ports:
       - "5001:5001"
-    env_file:
-      - .env
     volumes:
+      - ./.env:/app/.env
       - ./db:/app/db           # Persist database
-      - ./images:/app/images   # Persist images (though they get deleted often)
+      - ./images:/app/images   # Persist images (though they get deleted often)ß
       - ./logs:/app/logs       # Persist logs
       - ./session.txt:/app/session.txt # Persist Bluesky session
       # - ./backup:/app/backup # Optional backup persistence
     restart: unless-stopped
     container_name: social-replicator
-    environment:
-      - TZ=US/Pacific
