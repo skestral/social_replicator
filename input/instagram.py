@@ -31,6 +31,15 @@ def get_instagram_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, P
     write_log("Gathering Instagram posts")
     posts = {}
     
+    # In Test Mode, expand time limit to capture all available posts (like Bluesky logic)
+    # Note: We import settings inside function or rely on global
+    from settings import settings
+    if settings.TEST_MODE:
+        write_log("[DRY RUN] Expanding Instagram time limit to find latest posts.")
+        timelimit = arrow.get(2020, 1, 1)
+
+    write_log(f"Gathering Instagram posts (Timelimit: {timelimit})")
+    
     # Get key dynamically (preferred) or fallback to import
     api_key = os.environ.get("INSTAGRAM_API_KEY", DEFAULT_KEY)
     
@@ -47,11 +56,13 @@ def get_instagram_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, P
 
     try:
         media_list = response.json().get('data', [])
+        write_log(f"Fetched {len(media_list)} raw items from Instagram API.")
     except ValueError:
         write_log(f"Failed to parse Instagram response as JSON. Status: {response.status_code}, Body: {response.text[:100]}", "error")
         return posts
     for media in media_list:
         created_at = arrow.get(media['timestamp'])
+        # write_log(f"Checking IG Post {media['id']} ({created_at}) vs {timelimit}")
         if created_at > timelimit:
             images = []
             if media['media_type'] == 'CAROUSEL_ALBUM':
@@ -59,8 +70,11 @@ def get_instagram_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, P
                 children_response = requests.get(children_url)
                 if children_response.status_code == 200:
                     children_data = children_response.json().get('data', [])
+                    # write_log(f"Fetched {len(children_data)} children for carousel {media['id']}")
                     for child in children_data:
                         images.append({"url": child.get('media_url', ''), "alt": ''})
+                else:
+                    write_log(f"Failed to fetch children for carousel {media['id']}: {children_response.status_code}", "warning")
             else:
                 images.append({"url": media.get('media_url', ''), "alt": ''})
 
@@ -81,5 +95,12 @@ def get_instagram_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, P
             p.post_to["bsky"] = True
             
             posts[media['id']] = p
+
+    if settings.TEST_MODE and posts:
+        # Find the single most recent post
+        latest_id = max(posts, key=lambda k: posts[k].created_at)
+        entry = posts[latest_id]
+        write_log(f"[DRY RUN] Selected most recent Instagram post: {entry.text[:30]}... ({entry.created_at})")
+        return {latest_id: entry}
 
     return posts

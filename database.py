@@ -122,6 +122,7 @@ class DatabaseManager:
         ids_out["discord_id"] = ids_in.get("discord_id") or ids_in.get("discordId", "")
         ids_out["tumblr_id"] = ids_in.get("tumblr_id") or ids_in.get("tumblrId", "")
         ids_out["bsky_id"] = ids_in.get("bsky_id", "")
+        ids_out["telegram_id"] = ids_in.get("telegram_id") or ids_in.get("telegramId", "")
         return ids_out
 
     def _is_in_db(self, line):

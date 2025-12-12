@@ -158,7 +158,7 @@ def get_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, Post]:  # A
                 try:
                     quoted_user, quoted_post, quote_url, open_quote = get_quote_post(feed_view.post.embed.record)
                 except Exception as e:
-                    write_log(f"Post {cid} is of a type the crossposter can't parse. Error: {e}", "error")
+                    write_log(f"Post {cid} contains a quote type structure not currently supported. Skipping quote processing.", "warning")
                     continue
                 if quoted_user != BSKY_HANDLE and (not settings.quote_posts or not open_quote):
                     continue
@@ -173,7 +173,7 @@ def get_posts(timelimit=arrow.utcnow().shift(hours=-1)) -> Dict[str, Post]:  # A
                     reply_to_user = get_reply_to_user(feed_view.post.record.reply.parent)
             
             if not reply_to_user:
-                write_log(f"Unable to find the user that post {cid} replies to or quotes", "error")
+                write_log(f"Unable to find the user that post {cid} replies to or quotes - parent post may be deleted.", "warning")
                 continue
 
             if created_at > timelimit and reply_to_user == BSKY_HANDLE:
@@ -292,7 +292,7 @@ def get_reply_to_user(reply):
         response: Any = client.app.bsky.feed.get_post_thread(params={"uri": uri})
         username = response.thread.post.author.handle
     except Exception as e:
-        write_log(f"Unable to retrieve reply_to-user of post. Error: {e}", "error")
+        write_log(f"Unable to retrieve reply_to-user of post (parent post likely deleted). Error: {e}", "warning")
     return username
 
 def restore_urls(record):
@@ -357,4 +357,7 @@ def download_bsky_video(m3u8_url):
             return None
     except subprocess.CalledProcessError as e:
         write_log(f"Error during ffmpeg conversion: {e}", "error")
+        return None
+    except FileNotFoundError:
+        write_log("FFmpeg not found. Video processing skipped. Install ffmpeg to enable video support.", "warning")
         return None

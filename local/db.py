@@ -81,6 +81,15 @@ def db_convert(ids_in):
         ids_out["tumblr_id"] = ids_in["tumblr_id"]
     except:
         ids_out["tumblr_id"] = ids_in.get("tumblrId", "")  # Adding conversion for tumblr_id
+
+    try:
+        ids_out["bsky_id"] = ids_in["bsky_id"]
+    except:
+        ids_out["bsky_id"] = ids_in.get("bskyId", "")
+    try:
+        ids_out["telegram_id"] = ids_in["telegram_id"]
+    except:
+        ids_out["telegram_id"] = ids_in.get("telegramId", "")
     return ids_out
 
 
