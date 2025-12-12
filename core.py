@@ -12,6 +12,8 @@ from models.post import Post
 
 class Crossposter:
     def __init__(self, db_manager: DatabaseManager, settings_manager: SettingsManager = None):
+        import threading
+        self.lock = threading.Lock()
         self.db = db_manager
         self.settings_manager = settings_manager or SettingsManager()
         self.post_cache = post_cache_read()
@@ -39,43 +41,48 @@ class Crossposter:
 
     def run(self):
         """Main execution flow."""
-        # Sync runtime settings
-        settings.TEST_MODE = self.settings_manager.get_bool("TEST_MODE", False)
-        settings.post_time_limit = self.settings_manager.get_int("POST_TIME_LIMIT", 12)
-        settings.max_retries = self.settings_manager.get_int("MAX_RETRIES", 5)
-        
-        # Sync crossposting toggles
-        settings.Twitter = self.settings_manager.get_bool("TWITTER_CROSSPOSTING", False)
-        settings.Mastodon = self.settings_manager.get_bool("MASTODON_CROSSPOSTING", False)
-        settings.Discord = self.settings_manager.get_bool("DISCORD_CROSSPOSTING", False)
-        settings.Tumblr = self.settings_manager.get_bool("TUMBLR_CROSSPOSTING", False)
-        settings.Instagram = self.settings_manager.get_bool("INSTAGRAM_CROSSPOSTING", False)
-        settings.Telegram = self.settings_manager.get_bool("TELEGRAM_CROSSPOSTING", False)
+        if not self.lock.acquire(blocking=False):
+            write_log("Job already running, skipping this trigger.")
+            return
 
-        # Recalculate timelimit with updated settings
-        self.timelimit = get_post_time_limit(self.post_cache)
+        try:
+            # Sync runtime settings
+            settings.TEST_MODE = self.settings_manager.get_bool("TEST_MODE", False)
+            settings.post_time_limit = self.settings_manager.get_int("POST_TIME_LIMIT", 12)
+            settings.max_retries = self.settings_manager.get_int("MAX_RETRIES", 5)
+            
+            # Sync crossposting toggles
+            settings.Twitter = self.settings_manager.get_bool("TWITTER_CROSSPOSTING", False)
+            settings.Mastodon = self.settings_manager.get_bool("MASTODON_CROSSPOSTING", False)
+            settings.Discord = self.settings_manager.get_bool("DISCORD_CROSSPOSTING", False)
+            settings.Tumblr = self.settings_manager.get_bool("TUMBLR_CROSSPOSTING", False)
+            settings.Instagram = self.settings_manager.get_bool("INSTAGRAM_CROSSPOSTING", False)
+            settings.Telegram = self.settings_manager.get_bool("TELEGRAM_CROSSPOSTING", False)
 
-        if settings.TEST_MODE:
-             write_log("[DRY RUN] Test Mode Enabled. No API calls will be made.")
-        
-        self.process_instagram()
-        self.process_bluesky()
-        
-        post_cache_write(self.post_cache)
-        # In Test Mode, we might not want to save the database/cache? 
-        # Actually output/post.py mock doesn't return updates=True usually? 
-        # Wait, I set updates=True in mock to show progress?
-        # If I mock updates=True, core will save DB.
-        # I should probably NOT save DB in Test Mode in core.py too.
-        
-        if not settings.TEST_MODE:
-            self.db.save(self.database)
-            self.db.backup()
-        
-        cleanup()
-        
-        if not self.instagram_posts and not self.bluesky_posts:
-            write_log("No new posts found.")
+            # Recalculate timelimit with updated settings
+            self.timelimit = get_post_time_limit(self.post_cache)
+
+            if settings.TEST_MODE:
+                 write_log("[DRY RUN] Test Mode Enabled. No API calls will be made.")
+
+            # Ensure we have the latest database state from disk before starting
+            self.database = self.db.read()
+            
+            self.process_instagram()
+            self.process_bluesky()
+            
+            post_cache_write(self.post_cache)
+            
+            if not settings.TEST_MODE:
+                self.db.save(self.database)
+                self.db.backup()
+            
+            cleanup()
+            
+            if not self.instagram_posts and not self.bluesky_posts:
+                write_log("No new posts found.")
+        finally:
+            self.lock.release()
 
     def process_instagram(self):
         self.instagram_posts = {}
