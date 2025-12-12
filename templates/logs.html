@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs - Social Replicator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Social Replicator</h1>
+            <nav class="nav-links">
+                <a href="/">Dashboard</a>
+                <a href="/logs" style="color: var(--accent);">Logs</a>
+                <a href="/settings">Settings</a>
+            </nav>
+        </header>
+
+        <section class="card">
+            <h2 style="margin-bottom: 1.5rem;">All Logs (Today)</h2>
+            <div class="log-viewer" id="logViewer"
+                style="height: 70vh; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                Loading logs...
+            </div>
+        </section>
+    </div>
+
+    <script>
+        async function fetchLogs() {
+            try {
+                // limit=0 means fetch all logs
+                const response = await fetch('/api/logs?limit=0');
+                const data = await response.json();
+                const container = document.getElementById('logViewer');
+                if (data.logs) {
+                    // Check if scrolled to bottom
+                    const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+
+                    // Highlight errors
+                    const html = data.logs.replace(/\n/g, '<br>')
+                        .replace(/^(.*\(ERROR\):.*)$/gm, '<span style="color: #ef4444; font-weight: bold;">$1</span>');
+                    container.innerHTML = html;
+
+                    // Auto-scroll only if already at bottom or first load
+                    if (isScrolledToBottom || container.innerHTML === 'Loading logs...') {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Poll logs every 5 seconds
+        fetchLogs();
+        setInterval(fetchLogs, 5000);
+    </script>
+</body>
+
+</html>

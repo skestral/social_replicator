@@ -1,0 +1,13 @@
+__pycache__
+database.json
+database.bak
+logs/*.log*
+backups/*.bak*
+.env
+*.jpg
+.idea/
+session.txt
+.DS_Store
+database.bak_*
+post.cache
+dry_run_last.json
