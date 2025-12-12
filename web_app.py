@@ -10,7 +10,35 @@ from settings import settings
 from settings.paths import log_path, image_path
 from settings_manager import SettingsManager
 
+
+class PrefixMiddleware(object):
+    def __init__(self, app, prefix=''):
+        self.app = app
+        self.prefix = prefix
+
+    def __call__(self, environ, start_response):
+        # Determine prefix: Priority given to X-Script-Name header, then environment var
+        prefix = environ.get('HTTP_X_SCRIPT_NAME', self.prefix)
+        
+        if prefix:
+             if environ['PATH_INFO'].startswith(prefix):
+                 environ['PATH_INFO'] = environ['PATH_INFO'][len(prefix):]
+                 environ['SCRIPT_NAME'] = prefix
+                 return self.app(environ, start_response)
+             else:
+                 environ['SCRIPT_NAME'] = prefix
+                 return self.app(environ, start_response)
+        
+        # Ensure SCRIPT_NAME is properly set even if empty, to avoid None usage if upstream didn't set it
+        if 'SCRIPT_NAME' not in environ:
+            environ['SCRIPT_NAME'] = ''
+            
+        return self.app(environ, start_response)
+
 app = Flask(__name__)
+# Always apply middleware; it handles the cases where prefix is empty/header missing correctly (pass-through)
+app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix=os.environ.get("PROXY_PREFIX", ""))
+
 db_manager = DatabaseManager()
 # We need to pass the settings manager to the crossposter now
 settings_manager = SettingsManager()
