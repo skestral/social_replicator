@@ -126,11 +126,22 @@ def post_to_bluesky(text, images: list[Dict[str, str]]):
     if not session_string:
         write_log("BSKY_SESSION_STRING is not set. Cannot login to Bluesky.", "error")
         return False, None
+    # Try session string first
     try:
         client.login(session_string=session_string)
-    except ValueError as e:
-        write_log(f"Failed to login to Bluesky: {e}", "error")
-        return False, None
+    except Exception as e:
+        write_log(f"Session login failed ({e}), attempting password login...", "warning")
+        try:
+             from settings.auth import BSKY_HANDLE, BSKY_PASSWORD
+             client.login(BSKY_HANDLE, BSKY_PASSWORD)
+             # Update stored session string
+             if hasattr(client, 'export_session_string'):
+                  new_session = client.export_session_string()
+                  with open("session.txt", "w") as f:
+                      f.write(new_session)
+        except Exception as login_err:
+             write_log(f"Failed to login to Bluesky with password: {login_err}", "error")
+             return False, None
 
     # Determine repo DID from session
     try:

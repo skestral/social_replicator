@@ -217,5 +217,9 @@ def start_scheduler():
         scheduler_thread.start()
 
 if __name__ == '__main__':
-    start_scheduler()
+    # Only run the scheduler in the reloader process (or if reloader is off)
+    # This prevents double execution when debug=True
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+         start_scheduler()
+         
     app.run(host='0.0.0.0', port=5001, debug=True)
